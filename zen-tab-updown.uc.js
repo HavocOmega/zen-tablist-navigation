@@ -15,7 +15,7 @@
       const k = document.createXULElement("key");
       k.id = id;
       k.setAttribute("keycode", keycode);
-      k.setAttribute("modifiers", "accel"); // accel = Ctrl on Win/Linux, Cmd on macOS
+      k.setAttribute("modifiers", "alt"); // accel = Ctrl on Win/Linux, Cmd on macOS
       k.setAttribute("command", command);
       keyset.appendChild(k);
     };
