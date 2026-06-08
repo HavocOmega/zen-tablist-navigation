@@ -11,6 +11,9 @@
   // HTML elements MUST be created in the XHTML namespace or they won't render.
   const HTML_NS = "http://www.w3.org/1999/xhtml";
 
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const accelName = isMac ? "Cmd" : "Ctrl";
+
   function showToast(message, bg) {
     if (!DEBUG) return;
     try {
@@ -57,51 +60,32 @@
     }
   }
 
+  // Use a raw keydown listener (capture phase) instead of XUL <key>/<command>
+  // elements. Dynamically-inserted keysets often fail to register in an
+  // already-loaded browser.xhtml, and inline `oncommand` is blocked by CSP.
+  // A capture-phase keydown listener bypasses keyset registration, command
+  // lookup, and CSP entirely.
+  function onKeyDown(e) {
+    const accel = isMac ? e.metaKey : e.ctrlKey;
+    const wrongAccel = isMac ? e.ctrlKey : e.metaKey;
+    if (!accel || wrongAccel || !e.shiftKey || e.altKey) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(1, accelName + "+Shift+Down"); // down the list
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(-1, accelName + "+Shift+Up"); // up the list
+    }
+  }
+
   function addKeys() {
-    if (document.getElementById("zenTabNavKeyset")) return;
-
-    // Use a <commandset> with a listener added via addEventListener instead of
-    // inline `oncommand` attributes. browser.xhtml's CSP (script-src-attr)
-    // blocks inline event handlers, so the inline approach silently fails.
-    const commandSet = document.createXULElement("commandset");
-    commandSet.id = "zenTabNavCommandSet";
-
-    const makeCommand = (id) => {
-      const cmd = document.createXULElement("command");
-      cmd.id = id;
-      commandSet.appendChild(cmd);
-    };
-    makeCommand("zenCmdTabDown");
-    makeCommand("zenCmdTabUp");
-
-    commandSet.addEventListener("command", (e) => {
-      if (e.target.id === "zenCmdTabDown") navigate(1, "Ctrl+Shift+Down");
-      else if (e.target.id === "zenCmdTabUp") navigate(-1, "Ctrl+Shift+Up");
-    });
-    document.documentElement.appendChild(commandSet);
-
-    const keyset = document.createXULElement("keyset");
-    keyset.id = "zenTabNavKeyset";
-
-    const make = (id, keycode, command) => {
-      const k = document.createXULElement("key");
-      k.id = id;
-      k.setAttribute("keycode", keycode);
-      k.setAttribute("modifiers", "accel shift"); // Ctrl+Shift (Cmd+Shift on macOS)
-      k.setAttribute("command", command); // id reference, not inline script -> CSP-safe
-      keyset.appendChild(k);
-    };
-
-    make("zenKeyTabDown", "VK_DOWN", "zenCmdTabDown"); // down the list
-    make("zenKeyTabUp", "VK_UP", "zenCmdTabUp");       // up the list
-
-    document.documentElement.appendChild(keyset);
-
-    // Re-insert so Firefox's global key listener registers the dynamically-added keys.
-    keyset.remove();
-    document.documentElement.appendChild(keyset);
-
-    console.log("[zen-tab-nav] keyset attached");
+    if (window._zenTabNavAttached) return;
+    window._zenTabNavAttached = true;
+    window.addEventListener("keydown", onKeyDown, true); // capture phase
+    console.log("[zen-tab-nav] keydown listener attached");
     showToast("Shortcuts active \u2714", "rgba(20,120,40,0.95)");
   }
 
