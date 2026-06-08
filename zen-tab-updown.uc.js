@@ -7,12 +7,16 @@
 (function () {
   const DEBUG = true; // set to false to silence toast + console logs
 
+  // browser.xhtml is a XUL document, so its default namespace is XUL.
+  // HTML elements MUST be created in the XHTML namespace or they won't render.
+  const HTML_NS = "http://www.w3.org/1999/xhtml";
+
   function showToast(message, bg) {
     if (!DEBUG) return;
     try {
       let toast = document.getElementById("zenTabNavToast");
       if (!toast) {
-        toast = document.createElement("div");
+        toast = document.createElementNS(HTML_NS, "div"); // HTML div, not XUL
         toast.id = "zenTabNavToast";
         toast.style.cssText = [
           "position: fixed", "bottom: 20px", "right: 20px",
@@ -22,7 +26,7 @@
           "transition: opacity 0.15s ease",
           "box-shadow: 0 4px 16px rgba(0,0,0,0.4)",
         ].join(";");
-        document.documentElement.appendChild(toast);
+        (document.body || document.documentElement).appendChild(toast);
       }
       toast.style.background = bg || "rgba(20,20,20,0.9)";
       toast.textContent = message;

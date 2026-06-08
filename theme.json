@@ -3,7 +3,7 @@
   "name": "Alt+Shift Up/Down Tab Navigation",
   "description": "Alt+Shift+Up moves up the vertical tab list and Alt+Shift+Down moves down, matching Zen's vertical tab order.",
   "author": "HavocOmega",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "zen-tab-updown.uc.js": {
       "include": [
