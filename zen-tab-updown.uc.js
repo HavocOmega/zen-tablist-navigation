@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name           Alt+Shift+Up/Down Tab Navigation
-// @description    Alt+Shift+Up moves up the vertical tab list, Alt+Shift+Down moves down (with visual debug)
+// @name           Ctrl+Shift+Up/Down Tab Navigation
+// @description    Ctrl+Shift+Up moves up the vertical tab list, Ctrl+Shift+Down moves down (with visual debug)
 // @include        chrome://browser/content/browser.xhtml
 // ==/UserScript==
 
@@ -43,7 +43,7 @@
   console.log("[zen-tab-nav] script evaluated");
   showToast("Script loaded \u2714");
 
-  window.zenTabNav = function (dir, label) {
+  function navigate(dir, label) {
     try {
       const before = gBrowser.selectedTab;
       gBrowser.tabContainer.advanceSelectedTab(dir, true);
@@ -55,25 +55,45 @@
     } catch (e) {
       console.error("[zen-tab-nav] command error", e);
     }
-  };
+  }
 
   function addKeys() {
     if (document.getElementById("zenTabNavKeyset")) return;
 
+    // Use a <commandset> with a listener added via addEventListener instead of
+    // inline `oncommand` attributes. browser.xhtml's CSP (script-src-attr)
+    // blocks inline event handlers, so the inline approach silently fails.
+    const commandSet = document.createXULElement("commandset");
+    commandSet.id = "zenTabNavCommandSet";
+
+    const makeCommand = (id) => {
+      const cmd = document.createXULElement("command");
+      cmd.id = id;
+      commandSet.appendChild(cmd);
+    };
+    makeCommand("zenCmdTabDown");
+    makeCommand("zenCmdTabUp");
+
+    commandSet.addEventListener("command", (e) => {
+      if (e.target.id === "zenCmdTabDown") navigate(1, "Ctrl+Shift+Down");
+      else if (e.target.id === "zenCmdTabUp") navigate(-1, "Ctrl+Shift+Up");
+    });
+    document.documentElement.appendChild(commandSet);
+
     const keyset = document.createXULElement("keyset");
     keyset.id = "zenTabNavKeyset";
 
-    const make = (id, keycode, dir, label) => {
+    const make = (id, keycode, command) => {
       const k = document.createXULElement("key");
       k.id = id;
       k.setAttribute("keycode", keycode);
-      k.setAttribute("modifiers", "alt shift"); // Alt+Shift (Option+Shift on macOS)
-      k.setAttribute("oncommand", `zenTabNav(${dir}, "${label}")`);
+      k.setAttribute("modifiers", "accel shift"); // Ctrl+Shift (Cmd+Shift on macOS)
+      k.setAttribute("command", command); // id reference, not inline script -> CSP-safe
       keyset.appendChild(k);
     };
 
-    make("zenKeyTabDown", "VK_DOWN", 1, "Alt+Shift+Down"); // down the list
-    make("zenKeyTabUp", "VK_UP", -1, "Alt+Shift+Up");      // up the list
+    make("zenKeyTabDown", "VK_DOWN", "zenCmdTabDown"); // down the list
+    make("zenKeyTabUp", "VK_UP", "zenCmdTabUp");       // up the list
 
     document.documentElement.appendChild(keyset);
 

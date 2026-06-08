@@ -2,8 +2,10 @@
 
 A [Sine](https://github.com/CosmoCreeper/Sine) mod for [Zen Browser](https://github.com/zen-browser/desktop) that adds keyboard shortcuts to move up and down the vertical tab list:
 
-- **Alt+Shift+Up** — move up the tab list (previous tab)
-- **Alt+Shift+Down** — move down the tab list (next tab)
+- **Ctrl+Shift+Up** — move up the tab list (previous tab)
+- **Ctrl+Shift+Down** — move down the tab list (next tab)
+
+(On macOS these are Cmd+Shift+Up/Down, since the shortcut uses the `accel` modifier.)
 
 ## Install (Sine)
 
@@ -29,6 +31,9 @@ Set `DEBUG = false` at the top of `zen-tab-updown.uc.js` to silence these.
 
 ## Notes
 
-- `modifiers` is `alt shift` — Alt+Shift on Windows/Linux, Option+Shift on macOS.
+- `modifiers` is `accel shift` — Ctrl+Shift on Windows/Linux, Cmd+Shift on macOS.
+- Shortcuts are wired through a `<commandset>` with a listener added via
+  `addEventListener` (not inline `oncommand`), because browser.xhtml's CSP
+  (`script-src-attr`) blocks inline event handlers.
 - The shortcuts reuse Firefox's built-in `advanceSelectedTab`, so "down" = next
   tab and "up" = previous tab in Zen's vertical order.
