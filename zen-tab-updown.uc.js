@@ -7,7 +7,7 @@
 (function () {
   const DEBUG = true; // set to false to silence toast + console logs
 
-  function showToast(message, bg = "rgba(20,20,20,0.9)") {
+  function showToast(message, bg) {
     if (!DEBUG) return;
     try {
       let toast = document.getElementById("zenTabNavToast");
@@ -24,7 +24,7 @@
         ].join(";");
         document.documentElement.appendChild(toast);
       }
-      toast.style.background = bg;
+      toast.style.background = bg || "rgba(20,20,20,0.9)";
       toast.textContent = message;
       toast.style.opacity = "1";
       clearTimeout(toast._hideTimer);
@@ -34,18 +34,23 @@
     }
   }
 
-  // (A) Runs the moment the file is evaluated. If you DON'T see this, the mod isn't loading at all.
+  // (A) Runs the instant the file is evaluated.
+  //     If you DON'T see this, the file itself isn't loading (install / cache issue).
   console.log("[zen-tab-nav] script evaluated");
-  showToast("Script loaded ✔");
+  showToast("Script loaded \u2714");
 
   window.zenTabNav = function (dir, label) {
-    const before = gBrowser.selectedTab;
-    gBrowser.tabContainer.advanceSelectedTab(dir, true);
-    const after = gBrowser.selectedTab;
-    const moved = before !== after;
-    const title = (after.label || "tab").slice(0, 30);
-    console.log(`[zen-tab-nav] ${label} fired -> moved=${moved} -> ${title}`);
-    showToast(`${label} ${moved ? "→ " + title : "(no move)"}`, "rgba(0,90,160,0.95)");
+    try {
+      const before = gBrowser.selectedTab;
+      gBrowser.tabContainer.advanceSelectedTab(dir, true);
+      const after = gBrowser.selectedTab;
+      const moved = before !== after;
+      const title = (after.label || "tab").slice(0, 30);
+      console.log(`[zen-tab-nav] ${label} fired -> moved=${moved} -> ${title}`);
+      showToast(`${label} ${moved ? "\u2192 " + title : "(no move)"}`, "rgba(0,90,160,0.95)");
+    } catch (e) {
+      console.error("[zen-tab-nav] command error", e);
+    }
   };
 
   function addKeys() {
@@ -64,7 +69,7 @@
     };
 
     make("zenKeyTabDown", "VK_DOWN", 1, "Alt+Shift+Down"); // down the list
-    make("zenKeyTabUp",   "VK_UP",  -1, "Alt+Shift+Up");   // up the list
+    make("zenKeyTabUp", "VK_UP", -1, "Alt+Shift+Up");      // up the list
 
     document.documentElement.appendChild(keyset);
 
@@ -73,13 +78,20 @@
     document.documentElement.appendChild(keyset);
 
     console.log("[zen-tab-nav] keyset attached");
-    showToast("Shortcuts active ✔", "rgba(20,120,40,0.95)");
+    showToast("Shortcuts active \u2714", "rgba(20,120,40,0.95)");
   }
 
-  // (B) Robust init — run immediately; don't rely on a one-shot event that may have already fired.
+  // (B) Robust init: run as soon as gBrowser is ready. Don't rely on a one-shot
+  //     event (ZenKeyboardShortcutsReady) that may have already fired before
+  //     Sine injected this script.
+  let tries = 0;
   function init() {
     if (typeof gBrowser === "undefined" || !gBrowser.tabContainer) {
-      setTimeout(init, 200); // gBrowser not ready yet; retry shortly
+      if (tries++ < 50) {
+        setTimeout(init, 200);
+      } else {
+        console.error("[zen-tab-nav] gBrowser never became ready");
+      }
       return;
     }
     addKeys();

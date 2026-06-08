@@ -1,9 +1,9 @@
 {
-  "id": "zen-tab-updown",
-  "name": "Ctrl+Up/Down Tab Navigation",
-  "description": "Ctrl+Up moves up the vertical tab list, Ctrl+Down moves down.",
-  "author": "YourName",
-  "version": "1.0.0",
+  "id": "zen-tablist-navigation",
+  "name": "Alt+Shift Up/Down Tab Navigation",
+  "description": "Alt+Shift+Up moves up the vertical tab list and Alt+Shift+Down moves down, matching Zen's vertical tab order.",
+  "author": "HavocOmega",
+  "version": "1.0.1",
   "scripts": {
     "zen-tab-updown.uc.js": {
       "include": [
