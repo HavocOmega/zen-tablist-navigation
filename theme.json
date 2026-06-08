@@ -1,0 +1,15 @@
+{
+  "id": "zen-tab-updown",
+  "name": "Ctrl+Up/Down Tab Navigation",
+  "description": "Ctrl+Up moves up the vertical tab list, Ctrl+Down moves down.",
+  "author": "YourName",
+  "version": "1.0.0",
+  "scripts": {
+    "zen-tab-updown.uc.js": {
+      "include": [
+        "chrome://browser/content/browser.xhtml"
+      ]
+    }
+  },
+  "fork": ["zen"]
+}
