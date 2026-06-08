@@ -5,46 +5,47 @@
 // ==/UserScript==
 
 (function () {
-  const DEBUG = true; // set to false to silence the on-screen toast + console logs
+  const DEBUG = true; // set to false to silence toast + console logs
 
-  function showToast(message) {
+  function showToast(message, bg = "rgba(20,20,20,0.9)") {
     if (!DEBUG) return;
-    let toast = document.getElementById("zenTabNavToast");
-    if (!toast) {
-      toast = document.createElement("div"); // HTML div (browser.xhtml is XHTML)
-      toast.id = "zenTabNavToast";
-      toast.style.cssText = [
-        "position: fixed",
-        "bottom: 20px",
-        "right: 20px",
-        "z-index: 2147483647",
-        "padding: 10px 16px",
-        "border-radius: 10px",
-        "background: rgba(20,20,20,0.9)",
-        "color: #fff",
-        "font: 13px/1.4 system-ui, sans-serif",
-        "pointer-events: none",
-        "opacity: 0",
-        "transition: opacity 0.15s ease",
-        "box-shadow: 0 4px 16px rgba(0,0,0,0.4)",
-      ].join(";");
-      document.documentElement.appendChild(toast);
+    try {
+      let toast = document.getElementById("zenTabNavToast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "zenTabNavToast";
+        toast.style.cssText = [
+          "position: fixed", "bottom: 20px", "right: 20px",
+          "z-index: 2147483647", "padding: 10px 16px", "border-radius: 10px",
+          "color: #fff", "font: 13px/1.4 system-ui, sans-serif",
+          "pointer-events: none", "opacity: 0",
+          "transition: opacity 0.15s ease",
+          "box-shadow: 0 4px 16px rgba(0,0,0,0.4)",
+        ].join(";");
+        document.documentElement.appendChild(toast);
+      }
+      toast.style.background = bg;
+      toast.textContent = message;
+      toast.style.opacity = "1";
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(() => (toast.style.opacity = "0"), 1200);
+    } catch (e) {
+      console.error("[zen-tab-nav] toast error", e);
     }
-    toast.textContent = message;
-    toast.style.opacity = "1";
-    clearTimeout(toast._hideTimer);
-    toast._hideTimer = setTimeout(() => (toast.style.opacity = "0"), 800);
   }
 
-  // Exposed so the <key> elements can call it via oncommand.
+  // (A) Runs the moment the file is evaluated. If you DON'T see this, the mod isn't loading at all.
+  console.log("[zen-tab-nav] script evaluated");
+  showToast("Script loaded ✔");
+
   window.zenTabNav = function (dir, label) {
     const before = gBrowser.selectedTab;
     gBrowser.tabContainer.advanceSelectedTab(dir, true);
     const after = gBrowser.selectedTab;
     const moved = before !== after;
     const title = (after.label || "tab").slice(0, 30);
-    console.log(`[zen-tab-nav] ${label} fired → moved=${moved} → ${title}`);
-    showToast(`${label} ${moved ? "→ " + title : "(no move)"}`);
+    console.log(`[zen-tab-nav] ${label} fired -> moved=${moved} -> ${title}`);
+    showToast(`${label} ${moved ? "→ " + title : "(no move)"}`, "rgba(0,90,160,0.95)");
   };
 
   function addKeys() {
@@ -66,9 +67,22 @@
     make("zenKeyTabUp",   "VK_UP",  -1, "Alt+Shift+Up");   // up the list
 
     document.documentElement.appendChild(keyset);
+
+    // Re-insert so Firefox's global key listener registers the dynamically-added keys.
+    keyset.remove();
+    document.documentElement.appendChild(keyset);
+
     console.log("[zen-tab-nav] keyset attached");
-    showToast("Tab nav shortcuts loaded ✔");
+    showToast("Shortcuts active ✔", "rgba(20,120,40,0.95)");
   }
 
-  window.addEventListener("ZenKeyboardShortcutsReady", addKeys, { once: true });
+  // (B) Robust init — run immediately; don't rely on a one-shot event that may have already fired.
+  function init() {
+    if (typeof gBrowser === "undefined" || !gBrowser.tabContainer) {
+      setTimeout(init, 200); // gBrowser not ready yet; retry shortly
+      return;
+    }
+    addKeys();
+  }
+  init();
 })();
