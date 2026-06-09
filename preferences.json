@@ -1,0 +1,35 @@
+[
+  {
+    "type": "separator",
+    "label": "Tab Navigation Shortcuts",
+    "id": "ztn-shortcuts-separator"
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.move-up",
+    "label": "Move up the tab list",
+    "type": "string",
+    "placeholder": "e.g., Ctrl+Shift+ArrowUp",
+    "default": "Ctrl+Shift+ArrowUp",
+    "description": "Keybind to select the previous (upward) tab. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowUp, Alt+K, Accel+PageUp."
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.move-down",
+    "label": "Move down the tab list",
+    "type": "string",
+    "placeholder": "e.g., Ctrl+Shift+ArrowDown",
+    "default": "Ctrl+Shift+ArrowDown",
+    "description": "Keybind to select the next (downward) tab. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowDown, Alt+J, Accel+PageDown."
+  },
+  {
+    "type": "separator",
+    "label": "Debugging",
+    "id": "ztn-debug-separator"
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.debug",
+    "label": "Show debug toast on keypress",
+    "type": "checkbox",
+    "default": false,
+    "description": "Display an on-screen toast and log to the console when shortcuts load and fire."
+  }
+]

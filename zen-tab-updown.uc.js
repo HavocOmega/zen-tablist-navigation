@@ -1,25 +1,33 @@
 // ==UserScript==
-// @name           Ctrl+Shift+Up/Down Tab Navigation
-// @description    Ctrl+Shift+Up moves up the vertical tab list, Ctrl+Shift+Down moves down (with visual debug)
+// @name           Tab List Navigation
+// @description    Configurable keyboard shortcuts to move up/down Zen's vertical tab list
 // @include        chrome://browser/content/browser.xhtml
 // ==/UserScript==
 
 (function () {
-  const DEBUG = true; // set to false to silence toast + console logs
+  const PREF_PREFIX = "extensions.zen-tablist-navigation.";
+  const DEFAULT_UP = "Ctrl+Shift+ArrowUp";
+  const DEFAULT_DOWN = "Ctrl+Shift+ArrowDown";
 
-  // browser.xhtml is a XUL document, so its default namespace is XUL.
-  // HTML elements MUST be created in the XHTML namespace or they won't render.
   const HTML_NS = "http://www.w3.org/1999/xhtml";
-
   const isMac = navigator.platform.toLowerCase().includes("mac");
-  const accelName = isMac ? "Cmd" : "Ctrl";
+
+  function getStr(name, fallback) {
+    try { return Services.prefs.getStringPref(PREF_PREFIX + name, fallback); }
+    catch (e) { return fallback; }
+  }
+  function getBool(name, fallback) {
+    try { return Services.prefs.getBoolPref(PREF_PREFIX + name, fallback); }
+    catch (e) { return fallback; }
+  }
+  const debugEnabled = () => getBool("debug", false);
 
   function showToast(message, bg) {
-    if (!DEBUG) return;
+    if (!debugEnabled()) return;
     try {
       let toast = document.getElementById("zenTabNavToast");
       if (!toast) {
-        toast = document.createElementNS(HTML_NS, "div"); // HTML div, not XUL
+        toast = document.createElementNS(HTML_NS, "div");
         toast.id = "zenTabNavToast";
         toast.style.cssText = [
           "position: fixed", "bottom: 20px", "right: 20px",
@@ -41,10 +49,62 @@
     }
   }
 
-  // (A) Runs the instant the file is evaluated.
-  //     If you DON'T see this, the file itself isn't loading (install / cache issue).
-  console.log("[zen-tab-nav] script evaluated");
-  showToast("Script loaded \u2714");
+  const log = (...a) => { if (debugEnabled()) console.log("[zen-tab-nav]", ...a); };
+
+  // Normalize common key aliases so both "Up" and "ArrowUp" work.
+  function normalizeKey(k) {
+    const map = {
+      up: "arrowup", down: "arrowdown", left: "arrowleft", right: "arrowright",
+      esc: "escape", space: " ", spacebar: " ",
+      pgup: "pageup", pgdn: "pagedown", del: "delete", ins: "insert", return: "enter",
+    };
+    return map[k] || k;
+  }
+
+  // Parse a string like "Ctrl+Shift+ArrowUp" into a modifier/key descriptor.
+  function parseBind(str) {
+    const bind = { ctrl: false, alt: false, shift: false, meta: false, key: "" };
+    for (const raw of String(str).split("+")) {
+      const p = raw.trim().toLowerCase();
+      if (!p) continue;
+      if (p === "ctrl" || p === "control") bind.ctrl = true;
+      else if (p === "alt" || p === "option" || p === "opt") bind.alt = true;
+      else if (p === "shift") bind.shift = true;
+      else if (p === "meta" || p === "cmd" || p === "command" || p === "win" || p === "super") bind.meta = true;
+      else if (p === "accel") { if (isMac) bind.meta = true; else bind.ctrl = true; }
+      else bind.key = normalizeKey(p);
+    }
+    return bind;
+  }
+
+  function bindToString(bind) {
+    const parts = [];
+    if (bind.ctrl) parts.push("Ctrl");
+    if (bind.alt) parts.push("Alt");
+    if (bind.shift) parts.push("Shift");
+    if (bind.meta) parts.push(isMac ? "Cmd" : "Meta");
+    if (bind.key) parts.push(bind.key);
+    return parts.join("+");
+  }
+
+  // Exact modifier match avoids accidental triggers (e.g. extra Alt held).
+  function eventMatches(e, bind) {
+    if (!bind.key) return false;
+    return e.ctrlKey === bind.ctrl &&
+           e.altKey === bind.alt &&
+           e.shiftKey === bind.shift &&
+           e.metaKey === bind.meta &&
+           e.key.toLowerCase() === bind.key;
+  }
+
+  let upBind = parseBind(DEFAULT_UP);
+  let downBind = parseBind(DEFAULT_DOWN);
+
+  function reloadBinds() {
+    upBind = parseBind(getStr("move-up", DEFAULT_UP));
+    downBind = parseBind(getStr("move-down", DEFAULT_DOWN));
+    log("binds -> up:", bindToString(upBind), "| down:", bindToString(downBind));
+  }
 
   function navigate(dir, label) {
     try {
@@ -53,56 +113,61 @@
       const after = gBrowser.selectedTab;
       const moved = before !== after;
       const title = (after.label || "tab").slice(0, 30);
-      console.log(`[zen-tab-nav] ${label} fired -> moved=${moved} -> ${title}`);
+      log(`${label} fired -> moved=${moved} -> ${title}`);
       showToast(`${label} ${moved ? "\u2192 " + title : "(no move)"}`, "rgba(0,90,160,0.95)");
     } catch (e) {
       console.error("[zen-tab-nav] command error", e);
     }
   }
 
-  // Use a raw keydown listener (capture phase) instead of XUL <key>/<command>
-  // elements. Dynamically-inserted keysets often fail to register in an
-  // already-loaded browser.xhtml, and inline `oncommand` is blocked by CSP.
-  // A capture-phase keydown listener bypasses keyset registration, command
-  // lookup, and CSP entirely.
   function onKeyDown(e) {
-    const accel = isMac ? e.metaKey : e.ctrlKey;
-    const wrongAccel = isMac ? e.ctrlKey : e.metaKey;
-    if (!accel || wrongAccel || !e.shiftKey || e.altKey) return;
-
-    if (e.key === "ArrowDown") {
+    if (eventMatches(e, downBind)) {
       e.preventDefault();
       e.stopPropagation();
-      navigate(1, accelName + "+Shift+Down"); // down the list
-    } else if (e.key === "ArrowUp") {
+      navigate(1, bindToString(downBind)); // down the list
+    } else if (eventMatches(e, upBind)) {
       e.preventDefault();
       e.stopPropagation();
-      navigate(-1, accelName + "+Shift+Up"); // up the list
+      navigate(-1, bindToString(upBind)); // up the list
     }
   }
 
-  function addKeys() {
+  // Live-reload binds when the user edits them in Sine's settings.
+  const prefObserver = {
+    observe(subject, topic) {
+      if (topic === "nsPref:changed") {
+        reloadBinds();
+        showToast("Shortcuts updated \u2714", "rgba(20,120,40,0.95)");
+      }
+    },
+  };
+
+  function attach() {
     if (window._zenTabNavAttached) return;
     window._zenTabNavAttached = true;
+
+    reloadBinds();
     window.addEventListener("keydown", onKeyDown, true); // capture phase
-    console.log("[zen-tab-nav] keydown listener attached");
+    Services.prefs.addObserver(PREF_PREFIX, prefObserver);
+    window.addEventListener("unload", () => {
+      try { Services.prefs.removeObserver(PREF_PREFIX, prefObserver); } catch (e) {}
+    }, { once: true });
+
+    console.log("[zen-tab-nav] active (up:", bindToString(upBind), "down:", bindToString(downBind) + ")");
     showToast("Shortcuts active \u2714", "rgba(20,120,40,0.95)");
   }
 
-  // (B) Robust init: run as soon as gBrowser is ready. Don't rely on a one-shot
-  //     event (ZenKeyboardShortcutsReady) that may have already fired before
-  //     Sine injected this script.
+  console.log("[zen-tab-nav] script evaluated");
+
+  // Run as soon as gBrowser is ready.
   let tries = 0;
   function init() {
     if (typeof gBrowser === "undefined" || !gBrowser.tabContainer) {
-      if (tries++ < 50) {
-        setTimeout(init, 200);
-      } else {
-        console.error("[zen-tab-nav] gBrowser never became ready");
-      }
+      if (tries++ < 50) setTimeout(init, 200);
+      else console.error("[zen-tab-nav] gBrowser never became ready");
       return;
     }
-    addKeys();
+    attach();
   }
   init();
 })();
