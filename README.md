@@ -26,11 +26,19 @@ Open **Settings → Sine Mods**, find **Tab List Navigation**, and click the
 - **Move up the tab list**
 - **Move down the tab list**
 
-Type a keybind using `+` to combine modifiers with a key, for example:
+You can set each binding **two ways**:
 
-- `Ctrl+Shift+ArrowUp`
-- `Alt+K`
-- `Accel+PageDown`
+1. **Type it** using `+` to combine modifiers with a key, for example:
+   - `Ctrl+Shift+ArrowUp`
+   - `Alt+K`
+   - `Accel+PageDown`
+2. **Record it** — enable **"Record Move Up keybind"** (or Down), then focus
+   the browser window and press the combination you want. It's written into the
+   text field automatically. Press **Esc** (or wait 10 seconds) to cancel.
+
+   > Sine has no built-in shortcut-capture widget, so recording happens in the
+   > browser window: after enabling the checkbox, click the browser window and
+   > press your combo.
 
 ### Supported modifiers
 
@@ -50,15 +58,17 @@ Other aliases: `PgUp`/`PageUp`, `PgDn`/`PageDown`, `Esc`/`Escape`, `Del`/`Delete
 
 Changes apply **immediately** — no restart needed — thanks to a live pref observer.
 
-## Debugging
+## Behavior options
 
-In the mod's settings, toggle **"Show debug toast on keypress"** (off by default).
-When on, you'll get an on-screen toast plus console logs (prefixed
-`[zen-tab-nav]`, viewable in the Browser Console — Ctrl+Shift+J):
+In the mod's settings under **Behavior**:
 
-- **"Shortcuts active ✔"** — the keydown listener attached.
-- **"Shortcuts updated ✔"** — a keybind was changed in settings.
-- A blue toast on each keypress naming the tab it moved to.
+- **Skip unloaded pinned tabs** (off by default) — when navigating, skip over
+  pinned tabs that haven't been loaded yet (discarded or never-opened) and land
+  on the next loaded tab instead.
+- **Pause media when leaving a tab** (off by default) — when you navigate away
+  from a tab that's playing audio/video, it's paused; when you navigate back,
+  it resumes. Only media that *this mod* paused is auto-resumed, so a tab you
+  paused yourself stays paused.
 
 ## Notes
 

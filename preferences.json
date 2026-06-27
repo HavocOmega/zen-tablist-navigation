@@ -10,7 +10,14 @@
     "type": "string",
     "placeholder": "e.g., Ctrl+Shift+ArrowUp",
     "default": "Ctrl+Shift+ArrowUp",
-    "description": "Keybind to select the previous (upward) tab. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowUp, Alt+K, Accel+PageUp."
+    "description": "Keybind to select the previous (upward) tab. Type it manually, or enable \"Record\" below and press the keys. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowUp, Alt+K, Accel+PageUp."
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.record-up",
+    "label": "Record Move Up keybind",
+    "type": "checkbox",
+    "default": false,
+    "description": "Enable this, then focus the browser window and press the key combination you want. It is saved to \"Move up the tab list\" above. Press Esc (or wait 10s) to cancel."
   },
   {
     "property": "extensions.zen-tablist-navigation.move-down",
@@ -18,18 +25,32 @@
     "type": "string",
     "placeholder": "e.g., Ctrl+Shift+ArrowDown",
     "default": "Ctrl+Shift+ArrowDown",
-    "description": "Keybind to select the next (downward) tab. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowDown, Alt+J, Accel+PageDown."
+    "description": "Keybind to select the next (downward) tab. Type it manually, or enable \"Record\" below and press the keys. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowDown, Alt+J, Accel+PageDown."
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.record-down",
+    "label": "Record Move Down keybind",
+    "type": "checkbox",
+    "default": false,
+    "description": "Enable this, then focus the browser window and press the key combination you want. It is saved to \"Move down the tab list\" above. Press Esc (or wait 10s) to cancel."
   },
   {
     "type": "separator",
-    "label": "Debugging",
-    "id": "ztn-debug-separator"
+    "label": "Behavior",
+    "id": "ztn-behavior-separator"
   },
   {
-    "property": "extensions.zen-tablist-navigation.debug",
-    "label": "Show debug toast on keypress",
+    "property": "extensions.zen-tablist-navigation.skip-unloaded-pinned",
+    "label": "Skip unloaded pinned tabs",
     "type": "checkbox",
     "default": false,
-    "description": "Display an on-screen toast and log to the console when shortcuts load and fire."
+    "description": "When navigating, skip over pinned tabs that haven't been loaded yet (discarded or never-opened), landing on the next loaded tab instead."
+  },
+  {
+    "property": "extensions.zen-tablist-navigation.pause-media",
+    "label": "Pause media when leaving a tab",
+    "type": "checkbox",
+    "default": false,
+    "description": "When you navigate away from a tab with playing audio/video, pause it. When you navigate back, resume it — but only if this mod was the one that paused it (it stays paused if you had paused it yourself)."
   }
 ]
