@@ -8,31 +8,17 @@
     "property": "extensions.zen-tablist-navigation.move-up",
     "label": "Move up the tab list",
     "type": "string",
-    "placeholder": "e.g., Ctrl+Shift+ArrowUp",
+    "placeholder": "Click and press a key combination…",
     "default": "Ctrl+Shift+ArrowUp",
-    "description": "Keybind to select the previous (upward) tab. Type it manually, or enable \"Record\" below and press the keys. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowUp, Alt+K, Accel+PageUp."
-  },
-  {
-    "property": "extensions.zen-tablist-navigation.record-up",
-    "label": "Record Move Up keybind",
-    "type": "checkbox",
-    "default": false,
-    "description": "Enable this, then focus the browser window and press the key combination you want. It is saved to \"Move up the tab list\" above. Press Esc (or wait 10s) to cancel."
+    "description": "Keybind to select the previous (upward) tab. Click this field and press the key combination you want — it records automatically. Press Esc (or wait 10s) to cancel. Supports modifiers Ctrl, Alt, Shift, Meta/Cmd (and Accel) combined with a key."
   },
   {
     "property": "extensions.zen-tablist-navigation.move-down",
     "label": "Move down the tab list",
     "type": "string",
-    "placeholder": "e.g., Ctrl+Shift+ArrowDown",
+    "placeholder": "Click and press a key combination…",
     "default": "Ctrl+Shift+ArrowDown",
-    "description": "Keybind to select the next (downward) tab. Type it manually, or enable \"Record\" below and press the keys. Combine modifiers (Ctrl, Alt, Shift, Meta/Cmd, or Accel) with a key using +. Examples: Ctrl+Shift+ArrowDown, Alt+J, Accel+PageDown."
-  },
-  {
-    "property": "extensions.zen-tablist-navigation.record-down",
-    "label": "Record Move Down keybind",
-    "type": "checkbox",
-    "default": false,
-    "description": "Enable this, then focus the browser window and press the key combination you want. It is saved to \"Move down the tab list\" above. Press Esc (or wait 10s) to cancel."
+    "description": "Keybind to select the next (downward) tab. Click this field and press the key combination you want — it records automatically. Press Esc (or wait 10s) to cancel. Supports modifiers Ctrl, Alt, Shift, Meta/Cmd (and Accel) combined with a key."
   },
   {
     "type": "separator",

@@ -26,19 +26,17 @@ Open **Settings → Sine Mods**, find **Tab List Navigation**, and click the
 - **Move up the tab list**
 - **Move down the tab list**
 
-You can set each binding **two ways**:
+**Click a field and press the combination you want** — it records automatically.
+Clicking the field drops you out of text entry and shows a *"Press a key
+combination…"* prompt; the next combo you press is written straight into the
+field (e.g. `Ctrl+Shift+ArrowUp`). Press **Esc** (or wait 10 seconds) to cancel
+and keep the previous value.
 
-1. **Type it** using `+` to combine modifiers with a key, for example:
-   - `Ctrl+Shift+ArrowUp`
-   - `Alt+K`
-   - `Accel+PageDown`
-2. **Record it** — enable **"Record Move Up keybind"** (or Down), then focus
-   the browser window and press the combination you want. It's written into the
-   text field automatically. Press **Esc** (or wait 10 seconds) to cancel.
-
-   > Sine has no built-in shortcut-capture widget, so recording happens in the
-   > browser window: after enabling the checkbox, click the browser window and
-   > press your combo.
+> Sine has no built-in shortcut-capture widget. Because `about:preferences`
+> runs in the parent process, the mod reaches the settings textbox directly and
+> turns it into a recorder. If that hook ever fails to attach, the field falls
+> back to a normal text box — type a combo manually using `+` to join modifiers
+> with a key (e.g. `Alt+K`, `Accel+PageDown`).
 
 ### Supported modifiers
 

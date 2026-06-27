@@ -9,7 +9,6 @@
   const DEFAULT_UP = "Ctrl+Shift+ArrowUp";
   const DEFAULT_DOWN = "Ctrl+Shift+ArrowDown";
 
-  const HTML_NS = "http://www.w3.org/1999/xhtml";
   const isMac = navigator.platform.toLowerCase().includes("mac");
 
   // ---- Pref helpers (every access is guarded; prefs may not exist yet) ----
@@ -24,10 +23,6 @@
   function setStr(name, value) {
     try { Services.prefs.setStringPref(PREF_PREFIX + name, value); }
     catch (e) { console.error("[zen-tab-nav] setStr", name, e); }
-  }
-  function setBool(name, value) {
-    try { Services.prefs.setBoolPref(PREF_PREFIX + name, value); }
-    catch (e) { console.error("[zen-tab-nav] setBool", name, e); }
   }
 
   // ---- Keybind parsing / formatting ----
@@ -216,103 +211,151 @@
     }
   }
 
-  // ---- Keybind capture ("record" mode) ----
-  // Sine has no native key-capture input, so we record the next key combo
-  // pressed in the browser window and write it into the string pref.
+  // ---- Click-to-record on the Sine settings textbox ----
+  // Sine has no native key-capture input. Its string prefs render as an
+  // <input type="text"> inside an hbox whose id is the pref property with dots
+  // replaced by hyphens (e.g. "extensions-zen-tablist-navigation-move-up").
+  // about:preferences runs in the PARENT process, so from this chrome script we
+  // can reach that input via the tab's contentDocument. We hook the field so
+  // that focusing/clicking it kicks the user out of text entry, prompts for a
+  // combo, and writes the captured combo back into the field and the pref.
 
-  let captureTarget = null;     // "move-up" | "move-down"
-  let captureRecordPref = null; // "record-up" | "record-down"
-  let captureTimer = null;
+  // True while a content-side capture is in progress, so the navigation
+  // keydown handler stays out of the way.
+  let capturingNow = false;
+  let contentCapture = null;  // { input, prefName, doc, orig }
+  let contentCaptureTimer = null;
+  const hookedDocs = new WeakSet();
 
-  function captureOverlay() {
-    let el = document.getElementById("zenTabNavCapture");
-    if (!el) {
-      el = document.createElementNS(HTML_NS, "div");
-      el.id = "zenTabNavCapture";
-      el.style.cssText = [
-        "position: fixed", "top: 50%", "left: 50%",
-        "transform: translate(-50%, -50%)", "z-index: 2147483647",
-        "padding: 16px 22px", "border-radius: 12px",
-        "background: rgba(20,20,20,0.96)", "color: #fff",
-        "font: 14px/1.5 system-ui, sans-serif", "text-align: center",
-        "box-shadow: 0 6px 24px rgba(0,0,0,0.5)", "pointer-events: none",
-      ].join(";");
-      const title = document.createElementNS(HTML_NS, "div");
-      title.id = "zenTabNavCaptureTitle";
-      title.style.cssText = "font-weight: 600; margin-bottom: 4px";
-      const hint = document.createElementNS(HTML_NS, "div");
-      hint.id = "zenTabNavCaptureHint";
-      hint.style.cssText = "opacity: 0.75; font-size: 12px";
-      el.appendChild(title);
-      el.appendChild(hint);
-      (document.body || document.documentElement).appendChild(el);
-    }
-    return el;
+  // Which of our prefs (if any) an input belongs to, via its host hbox id.
+  function prefForInput(input) {
+    try {
+      const host = input.closest("[id^='extensions-zen-tablist-navigation-']");
+      if (!host) return null;
+      if (host.id.endsWith("-move-up")) return "move-up";
+      if (host.id.endsWith("-move-down")) return "move-down";
+    } catch (e) { /* not one of ours */ }
+    return null;
   }
 
-  function showCaptureOverlay(title, hint) {
+  function endContentCapture(save, value) {
+    const cap = contentCapture;
+    if (!cap) return;
+    contentCapture = null;
+    capturingNow = false;
+    if (contentCaptureTimer) { clearTimeout(contentCaptureTimer); contentCaptureTimer = null; }
+    try { cap.doc.removeEventListener("keydown", onContentCaptureKey, true); } catch (e) {}
+    try { cap.input.readOnly = false; } catch (e) {}
     try {
-      const el = captureOverlay();
-      el.querySelector("#zenTabNavCaptureTitle").textContent = title;
-      el.querySelector("#zenTabNavCaptureHint").textContent = hint || "";
-      el.style.display = "block";
+      if (save && value) {
+        cap.input.value = value;
+        setStr(cap.prefName, value); // updates the live binds via the observer
+        // Nudge Sine's own change handler so it persists the field too.
+        try { cap.input.dispatchEvent(new cap.doc.defaultView.Event("change", { bubbles: true })); } catch (e) {}
+      } else {
+        cap.input.value = cap.orig;
+      }
     } catch (e) {
-      console.error("[zen-tab-nav] showCaptureOverlay", e);
+      console.error("[zen-tab-nav] endContentCapture", e);
     }
   }
 
-  function hideCaptureOverlay() {
+  function onContentCaptureKey(e) {
     try {
-      const el = document.getElementById("zenTabNavCapture");
-      if (el) el.style.display = "none";
-    } catch (e) {}
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") { endContentCapture(false); return; }
+      const bind = bindFromEvent(e);
+      if (!bind) return; // lone modifier — keep waiting for a real key
+      endContentCapture(true, bindToString(bind));
+    } catch (err) {
+      console.error("[zen-tab-nav] content capture key", err);
+      endContentCapture(false);
+    }
   }
 
-  function endCapture() {
-    captureTarget = null;
-    captureRecordPref = null;
-    if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
+  function startContentCapture(input, prefName, doc) {
+    if (contentCapture) return; // one capture at a time
+    try {
+      contentCapture = { input, prefName, doc, orig: input.value };
+      capturingNow = true;
+      try { input.blur(); } catch (e) {}          // kick the user out of editing
+      try { input.readOnly = true; } catch (e) {} // and out of text entry
+      input.value = "Press a key combination… (Esc to cancel)";
+      doc.addEventListener("keydown", onContentCaptureKey, true);
+      contentCaptureTimer = setTimeout(() => endContentCapture(false), 10000);
+    } catch (e) {
+      console.error("[zen-tab-nav] startContentCapture", e);
+      endContentCapture(false);
+    }
   }
 
-  function startCapture(targetPref, recordPref) {
-    captureTarget = targetPref;
-    captureRecordPref = recordPref;
-    showCaptureOverlay("Press a key combination…", "Focus the browser window · Esc to cancel");
-    if (captureTimer) clearTimeout(captureTimer);
-    captureTimer = setTimeout(cancelCapture, 10000);
+  function onPrefMouseDown(e) {
+    try {
+      const input = e.target;
+      if (!input || input.tagName !== "INPUT") return;
+      const prefName = prefForInput(input);
+      if (!prefName) return;
+      e.preventDefault();  // don't place a text caret / enter edit mode
+      e.stopPropagation();
+      startContentCapture(input, prefName, input.ownerDocument);
+    } catch (err) {
+      console.error("[zen-tab-nav] pref mousedown", err);
+    }
   }
 
-  function cancelCapture() {
-    const record = captureRecordPref;
-    endCapture();
-    hideCaptureOverlay();
-    if (record) setBool(record, false);
+  function onPrefFocusIn(e) {
+    try {
+      const input = e.target;
+      if (!input || input.tagName !== "INPUT") return;
+      const prefName = prefForInput(input);
+      if (!prefName) return;
+      startContentCapture(input, prefName, input.ownerDocument); // dedup-guarded
+    } catch (err) {
+      console.error("[zen-tab-nav] pref focusin", err);
+    }
   }
 
-  function applyCapture(e) {
-    const bind = bindFromEvent(e);
-    if (!bind) return; // lone modifier — keep waiting for a real key
-    const str = bindToString(bind);
-    const target = captureTarget;
-    const record = captureRecordPref;
-    endCapture();
-    setStr(target, str);           // observer reloads the binds
-    if (record) setBool(record, false);
-    showCaptureOverlay("Saved: " + str, "");
-    setTimeout(hideCaptureOverlay, 900);
+  // Attach the delegated listeners to an about:preferences document once.
+  function hookPrefsDoc(doc) {
+    try {
+      if (!doc || hookedDocs.has(doc)) return;
+      hookedDocs.add(doc);
+      doc.addEventListener("mousedown", onPrefMouseDown, true);
+      doc.addEventListener("focusin", onPrefFocusIn, true);
+    } catch (e) {
+      console.error("[zen-tab-nav] hookPrefsDoc", e);
+    }
+  }
+
+  // Find any open about:preferences tab and hook its (in-process) document.
+  function scanForPrefsDocs() {
+    try {
+      for (const b of gBrowser.browsers) {
+        try {
+          const uri = b.currentURI && b.currentURI.spec;
+          if (uri && uri.startsWith("about:preferences") && b.contentDocument) {
+            hookPrefsDoc(b.contentDocument);
+          }
+        } catch (e) { /* cross-process or not ready — skip */ }
+      }
+    } catch (e) {
+      console.error("[zen-tab-nav] scanForPrefsDocs", e);
+    }
+  }
+
+  function onMaybePrefsLoad(e) {
+    try {
+      const doc = e.target;
+      const href = doc && doc.location && String(doc.location.href);
+      if (href && href.startsWith("about:preferences")) hookPrefsDoc(doc);
+    } catch (e) { /* ignore */ }
   }
 
   // ---- Event handling ----
 
   function onKeyDown(e) {
-    // Capture mode swallows the next keystroke to record it.
-    if (captureTarget) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.key === "Escape") { cancelCapture(); return; }
-      applyCapture(e);
-      return;
-    }
+    if (capturingNow) return; // a settings-field capture is consuming keys
     try {
       if (eventMatches(e, downBind)) {
         e.preventDefault();
@@ -328,19 +371,13 @@
     }
   }
 
-  // Live-reload binds and handle record toggles from Sine's settings.
+  // Live-reload binds when the user changes a shortcut in Sine's settings.
   const prefObserver = {
     observe(subject, topic, data) {
       if (topic !== "nsPref:changed") return;
       try {
         const name = String(data).slice(PREF_PREFIX.length);
-        if (name === "record-up") {
-          if (getBool("record-up", false)) startCapture("move-up", "record-up");
-        } else if (name === "record-down") {
-          if (getBool("record-down", false)) startCapture("move-down", "record-down");
-        } else if (name === "move-up" || name === "move-down") {
-          reloadBinds();
-        }
+        if (name === "move-up" || name === "move-down") reloadBinds();
       } catch (e) {
         console.error("[zen-tab-nav] pref observer error", e);
       }
@@ -355,8 +392,17 @@
       reloadBinds();
       window.addEventListener("keydown", onKeyDown, true); // capture phase
       Services.prefs.addObserver(PREF_PREFIX, prefObserver);
+
+      // Hook the Sine settings textboxes so clicking one records a combo.
+      // about:preferences is in-process, so its content events reach us here.
+      gBrowser.addEventListener("DOMContentLoaded", onMaybePrefsLoad, true);
+      gBrowser.tabContainer.addEventListener("TabSelect", scanForPrefsDocs);
+      scanForPrefsDocs(); // catch a settings tab that's already open
+
       window.addEventListener("unload", () => {
         try { Services.prefs.removeObserver(PREF_PREFIX, prefObserver); } catch (e) {}
+        try { gBrowser.removeEventListener("DOMContentLoaded", onMaybePrefsLoad, true); } catch (e) {}
+        try { gBrowser.tabContainer.removeEventListener("TabSelect", scanForPrefsDocs); } catch (e) {}
       }, { once: true });
     } catch (e) {
       console.error("[zen-tab-nav] attach error", e);
