@@ -160,26 +160,52 @@
     }
   }
 
+  // The list of tabs the user can arrow through, in visual order, limited to
+  // the current workspace (matches what advanceSelectedTab walks).
+  function navigableTabs() {
+    try {
+      if (gBrowser.visibleTabs && gBrowser.visibleTabs.length) return gBrowser.visibleTabs;
+    } catch (e) { /* fall through */ }
+    try { return Array.from(gBrowser.tabs || []); }
+    catch (e) { return []; }
+  }
+
+  // Walk from the current tab in `dir`, skipping pinned tabs that aren't loaded,
+  // and return the first eligible tab WITHOUT selecting anything. We must peek
+  // rather than select-then-check, because selecting an unloaded tab loads it
+  // (which would defeat the skip). Returns null if no other tab qualifies.
+  function pickSkippingUnloadedPinned(dir) {
+    const tabs = navigableTabs();
+    const n = tabs.length;
+    if (!n) return null;
+    const start = tabs.indexOf(gBrowser.selectedTab);
+    if (start === -1) return null;
+    let idx = start;
+    for (let step = 0; step < n; step++) {
+      idx = (idx + dir + n) % n;
+      const t = tabs[idx];
+      if (t === gBrowser.selectedTab) break; // wrapped all the way around
+      if (t.pinned && isUnloaded(t)) continue; // skip unloaded pinned
+      return t;
+    }
+    return null;
+  }
+
   function navigate(dir) {
     try {
       const skipPinned = getBool("skip-unloaded-pinned", false);
       const pauseMedia = getBool("pause-media", false);
 
       const before = gBrowser.selectedTab;
-      const tabCount = (gBrowser.tabs && gBrowser.tabs.length) || 0;
 
-      gBrowser.tabContainer.advanceSelectedTab(dir, true);
-      let after = gBrowser.selectedTab;
-
-      // Keep moving in the same direction while we land on an unloaded pinned
-      // tab. Stop if we loop back to the start or exhaust the tab list.
       if (skipPinned) {
-        let guard = 0;
-        while (after !== before && after.pinned && isUnloaded(after) && guard++ < tabCount) {
-          gBrowser.tabContainer.advanceSelectedTab(dir, true);
-          after = gBrowser.selectedTab;
-        }
+        const target = pickSkippingUnloadedPinned(dir);
+        if (target && target !== before) gBrowser.selectedTab = target;
+      } else {
+        gBrowser.tabContainer.advanceSelectedTab(dir, true);
       }
+
+      const after = gBrowser.selectedTab;
 
       if (pauseMedia && after !== before) {
         pauseMediaOnLeave(before);
